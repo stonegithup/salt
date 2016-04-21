@@ -1,0 +1,19 @@
+{% extends 'basic/conf/hosts.template' %}
+{% block body %}
+10.46.171.50     uc003og01ng01mg001.y7tech.cn
+10.46.171.71     uc002og01ng01mg001.y7tech.cn
+10.171.131.124  of001og001.y7tech.cn
+10.171.100.155  mt.y7tech.cn
+10.45.12.31   git.y7tech.cn
+10.46.171.72  uc001og01ng01mg001.y7tech.cn
+10.45.13.67   dzsw.y7tech.cn
+10.171.131.124 of001og001.y7tech.cn
+10.171.70.45 nginxtest.y7tech.cn
+10.44.31.27  nginx1.y7tech.cn
+10.46.170.146 m001mg001.y7tech.cn
+10.46.170.251 zabbix.y7tech.cn
+10.44.14.176  traffic.y7tech.cn
+10.172.91.240  mail1.y7tech.cn
+10.170.169.89  mail2.y7tech.cn
+10.44.28.114 vesta.y7tech.cn
+{% endblock %}

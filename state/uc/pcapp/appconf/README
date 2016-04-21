@@ -1,0 +1,15 @@
+请把本目录下的.properties文件拷贝到/etc/y7tech/pcapp/ ，并按实际部署情况修改对应的配置项
+
+1.部署时需要将y7pcapp.properties拷贝到/etc/y7tech/pcapp/目录下，并 按实际部署情况修改对应的配置项
+2.y7pcapp.properties文件各个字段说明：
+  exchangeName表示Rabbitmq的exchange名称；
+  host表示发送Rabbitmq消息的主机地址；
+  appProtocol  下载安装包的约定协议；
+  appHost 下载安装包的约定主机地址；
+  appPort 下载安装包的约定端口；
+  publicCloud 下载安装包的约定好的子目录；
+
+3.mysql max_allowed_packet 需配置为300M，因为pc端的安装包相对会比较大。
+4.运行指令：/opt/jdk/bin/java -jar y7pc-app.jar > logs.log &
+5.停止指令：kill -9 进程号
+

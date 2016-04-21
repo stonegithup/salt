@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jee="http://www.springframework.org/schema/jee" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd                     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd                              http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd                              http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-3.0.xsd                              http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd                      http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+	
+	<context:property-placeholder location="classpath*:META-INF/spring/*.properties" />
+	
+	<context:component-scan base-package="com.ronglian.eudisk,com.y7tech.office.service">
+		<context:exclude-filter expression="org.springframework.stereotype.Controller" type="annotation" />
+	</context:component-scan>
+
+	<bean id="springContextUtil" class="com.ronglian.tools.SpringContextUtil" />
+
+    <!-- 国际化配置 begin -->
+    <bean id="messageSource"
+        class="org.springframework.context.support.ResourceBundleMessageSource">
+        <!-- 消息文件为messages* -->
+        <property name="basename" value="messages" />
+    </bean>
+    
+    <bean id="localeResolver"
+        class="org.springframework.web.servlet.i18n.SessionLocaleResolver">
+        <!-- 默认为中文 -->
+        <property name="defaultLocale" value="zh_CN" />
+    </bean>
+    
+    <bean id="localeChangeInterceptor"
+        class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor">
+        <!-- 处理GET参数： index.htm?lang=zh_CN -->
+        <property name="paramName" value="lang" />
+    </bean>
+    
+    <bean class="org.springframework.web.servlet.mvc.support.ControllerClassNameHandlerMapping" >
+        <property name="interceptors">
+           <list>
+            <ref bean="localeChangeInterceptor" />
+           </list>
+        </property>
+    </bean>
+    
+	<bean id="customParamBean"  class="com.ronglian.eudisk.bean.CustomParamBean">
+		<property name="previewProvider" value="${previewProvider.name}"></property>
+		<property name="videoBinPath" value="${videoBinPath}"></property>
+		<property name="small" value="${image.small}"></property>
+		<property name="middle" value="${image.middle}"></property>
+		<property name="large" value="${image.large}"></property>
+		<property name="usePdfCmd" value="${use.pdf.cmd}"></property>
+		<property name="picPath" value="${pic.path}"></property>
+    </bean>     
+    
+    
+	<bean id="velocityEngine"
+		class="org.springframework.ui.velocity.VelocityEngineFactoryBean">
+		<property name="resourceLoaderPath">
+			<value>/WEB-INF/velocity/</value>
+		</property>
+	</bean>    
+    
+</beans>

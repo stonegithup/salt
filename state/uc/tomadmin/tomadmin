@@ -1,0 +1,316 @@
+#!/bin/bash
+#
+#
+# write by bit_stone
+# email wnfmq@126.com
+# qq 1030700432
+set -e
+
+if [ "$2" != '--full' ];then
+ADMIN="bash /opt/$2tomcat/bin/catalina.sh"
+DOMAINS_DIR=/opt/$2tomcat/
+fi
+#DOMAIN_CONF=/domains.conf
+
+help() {
+    progname=$(basename $0)
+    echo "Usage: "
+    echo "    $progname start <domain-name>"
+    echo "    $progname stop <domain-name>"
+    echo "    $progname restart <domain-name>"
+    echo "    $progname kill <domain-name>          -- kill -9 domain-pid"
+    echo "    $progname list <--full>|<appname>     -- list all|<appname> running and known domains"
+    echo "    $progname update-app <domain-name> <projectname> <version>"
+    echo "    $progname taillog <domain-name> [-n LINES] [-f] -- tail domain log"
+    exit 0
+}
+
+if [[ -t 1 ]]; then
+    # stdout is tty
+    WGET_NO_VERBOSE=
+else
+    WGET_NO_VERBOSE="--no-verbose"
+fi
+
+check_user() {
+    _appname=$1
+    _uperfirst=$(echo $_appname | awk '{print toupper(substr($0,1,1))substr($0,2);}')
+    __required_user=app$_uperfirst
+    if [[ "$(whoami)" != "$__required_user" ]]; then
+        echo "This script is supposed to be run as '$__required_user'."
+        exit 0
+    fi
+}
+
+exist_domain() {
+    domainname=$1
+    if [ -d $DOMAINS_DIR/webapps/$domainname ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+domain_is_running() {
+    domainname=$1
+    [ -z "$domainname" ] && return 
+    if ps auxww | grep -E "$domainname"|grep "java"  >/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+domain_version(){
+    domainname=$1
+    unset DOMAIN_DEPLOYED
+    [ -z "$domainname" ] && return 
+    export DOMAIN_DEPLOYED=`cat /opt/$1tomcat/webapps/$1/version 2>>/dev/null |awk -F: '{print $2}' 2>> /dev/null `
+}
+
+parse_domain_process() {
+    domainname=$1
+    unset DOMAIN_PROC_PID
+    if ! domain_is_running $domainname; then
+        return 
+    else
+        export DOMAIN_PROC_PID=$(ps auxww |grep "java"| awk "/$domainname/{print \$2}")
+        return 0
+    fi
+}
+
+start_domain() {
+    domainname=$1
+    [[ -z "$domainname" ]] && help
+    if ! exist_domain $domainname; then
+        echo "$domainname does not exist, abort."
+        exit 1
+    fi
+    if domain_is_running $domainname; then
+        if parse_domain_process $domainname;then
+            echo "$domainname is running, pid: $DOMAIN_PROC_PID"
+            exit 0
+        fi
+    else
+        echo "启动domain"
+        $ADMIN start
+        if parse_domain_process $domainname;then
+            echo -e "\n$domainname pid: $DOMAIN_PROC_PID"
+        else
+            echo -e "$domainname not start"
+        fi
+    fi
+}
+
+stop_domain() {
+    domainname=$1
+    [[ -z "$domainname" ]] && help
+    if ! domain_is_running $domainname; then
+        echo "$domainname is not running, abort.\n"
+        return 0
+    else
+        $ADMIN stop ; sleep 1
+        # check result of stop. when restart some domains, the stop step is failed but no check.
+        # the pid is still running, so the start step is exited. 
+        # but the status of this domain's pid become hangging, works abnormally
+        # when restart a domain in loop, it maybe make all pid of this domain in each host works abnormally.
+        if domain_is_running $domainname; then
+            echo -e "stop failed, $domainname is still running. now KILL it ...\n"
+            kill_domain $@
+        fi
+    fi
+}
+
+kill_domain() {
+    domainname=$1
+    [[ -z "$domainname" ]] && help
+    if ! domain_is_running $domainname; then
+        echo "$domainname is not running, abort."
+        exit 0
+    else
+        parse_domain_process $domainname
+        echo "$domainname is running, pid: $DOMAIN_PROC_PID"
+        echo "kill -9 $DOMAIN_PROC_PID"
+        kill -9 $DOMAIN_PROC_PID
+    fi
+}
+
+
+
+list_domains() {
+    if [ "$1" == "--full" ]; then
+        local _full=yes
+    else
+        echo "invoke with '--full' to see all supported domains"
+    fi
+    printf "| %-20s | %5s | %5s | %5s | %10s | %25s |\n" NAME ADMIN HTTP EXIST PID DEPLOYED
+    for i in `find /opt/ -maxdepth 1 -name "*tomcat"`
+    do
+        unset appname
+        unset _aport
+        unset _hport
+
+        appname=$(echo ${i##*/}|sed 's/tomcat//')
+        DOMAINS_DIR=$i
+        serverconf=$DOMAINS_DIR/conf/server.xml
+        _aport=`grep shutdown $serverconf|awk '{print $2}'|awk -F= '{print $2}'|tr -d \" `
+        _hport=`grep "port=" $serverconf|grep -v shutdown|awk -F'port=' '{print $2}'|awk '{print $1}'|tr -d \"`
+        unset DOMAIN_EXIST
+        if exist_domain $appname; then
+            DOMAIN_EXIST=yes
+        else
+            DOMAIN_EXIST=no
+        fi
+        parse_domain_process $appname
+        domain_version $appname
+        if exist_domain $_name || [ "$_full" == yes ]; then                                                            
+             printf "| %-20s | %5s | %5s | %5s | %10s | %25s |\n" \
+                  ${appname:--} ${_aport:--} ${_hport:--} ${DOMAIN_EXIST:--} ${DOMAIN_PROC_PID:--} ${DOMAIN_DEPLOYED:--}                  
+        fi
+
+    done
+}
+
+WARDIR=$DOMAINS_DIR/wars/
+UPDATE_LOG=$DOMAINS_DIR/logs/update.log
+
+updateapp_log() {
+    echo -ne $* >> $UPDATE_LOG
+}
+
+updateapp_echo_fail() {
+    updateapp_log "FAILED"
+}
+
+updateapp_echo_newline() {
+    updateapp_log "\n"
+}
+
+prepare_updateapp_logfile() {
+    #! [ -e $UPDATE_LOG ] && touch $UPDATE_LOG 
+    if ! [ -e $UPDATE_LOG ]    
+    then    
+        touch $UPDATE_LOG    
+    fi 
+}
+
+check_md5(){
+    projectname=$1
+    domainname=$2
+    version=$3
+    [[ -z "$domainname" || -z "$version" ]] && help
+    #CHECKURL=http://10.44.136.43/md5?$domainname=$version\&war=$projectname
+    CHECKURL=http://git.y7tech.cn/md5?$domainname=$version\&war=$projectname
+    Re=`curl -H "HOST:downloadwar" $CHECKURL  2>>/dev/null `
+    if echo $Re|grep "True" >> /dev/null
+    then
+        echo "Pro:$projectname version:$version,md5 值交验通过"
+        return 0
+    else
+        echo "Pro:$projectname version:$version,md5值交验没有被通过，请等待文件完整上传"
+        return 1
+    fi  
+}
+
+update_app() {
+    projectname=$2
+    domainname=$1
+    version=$3
+    [[ -z "$domainname" || -z "$version" ]] && help
+
+    prepare_updateapp_logfile
+    trap "updateapp_echo_fail" ERR
+    trap "updateapp_echo_newline" EXIT
+    
+    if [ ! -d $WARDIR ]; then
+        echo "Directory not found: $WARDIR"
+        echo "If you are on a production server, please use salt to initialize ppweb glassfish env"
+        echo "On salt master, run: salt $(hostname -f) state.sls live.livebackend"
+        echo "If you continue, you may be asked for sudo password to create the dir"
+        read -p "Press Ctrl-C to exit, Enter to continue." __tmp
+        sudo mkdir -pv $WARDIR
+        sudo chown ${WHOAMI}. $WARDIR
+    fi
+
+    WARURL=http://git.y7tech.cn/$projectname/web/$version/$domainname.war
+    WARFILE=$WARDIR/$domainname-$version.war
+    updateapp_log "[$(date '+%Y-%m-%d %H:%M:%S')] UPDATE $domainname\t"
+    APPDIR=$DOMAINS_DIR/webapps/$domainname
+    if wget $WGET_NO_VERBOSE -O$WARFILE --header "Host: downloadwar" $WARURL; then
+            rm -rf $APPDIR >> /dev/null  
+            if unzip $WARFILE -d $APPDIR >> /dev/null ; then
+                echo "unzip $WARFILE -d $APPDIR "
+                updateapp_log "(UNDEPLOY $app_deployed)\t"
+            else
+                updateapp_log "(UNDEPLOY None)\t"
+
+            fi
+            updateapp_log "(DEPLOY $domainname $version)\t"
+            updateapp_log "SUCCEED"
+    else
+        ret=$?
+        updateapp_log "(DOWNLOAD $WARURL) FAILED"
+        exit $ret
+    fi
+    [ -f "$WARFILE" ] && rm -rf "$WARFILE"
+    # restart domain after update Version
+    stop_domain  $domainname
+
+    start_domain $domainname
+}
+
+tail_log() {
+    domainname=$1
+    shift
+    [[ -z "$domainname" ]] && help
+    logfile=$DOMAINS_DIR/logs/catalina.out
+    if [ ! -e $logfile ]; then
+        echo "log file does not exist: $logfile"
+    else
+        echo "tail $logfile $@"
+        tail $logfile $@
+    fi
+}
+
+# process args and dispatch actions
+if [ $# -eq 0 ]; then
+    help
+fi
+
+action=$1
+shift
+case $action in
+    start)
+        check_user $@
+        start_domain $@
+        ;;
+    stop)
+        check_user $@
+        stop_domain $@
+        ;;
+    restart)
+        check_user $@
+        stop_domain $@
+        echo ""
+        start_domain $@
+        ;;
+    kill)
+        check_user $@
+        kill_domain $@
+        ;;
+    list)
+        list_domains $@
+        ;;
+    update-app)
+        check_md5 $@
+        check_user $@
+        update_app $@
+        ;;
+    taillog)
+        tail_log $@
+        ;;
+    *)
+        help
+        ;;
+esac
+
+# vim:ai:et:sts=4:sw=4:

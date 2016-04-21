@@ -1,0 +1,6 @@
+check process activemq  with pidfile  /var/run/activemq/main.pid
+    start program = "/etc/init.d/activemq start"
+        as uid root and gid root
+    stop program = "/etc/init.d/activemq stop"
+        as uid root and gid root
+    group activemq

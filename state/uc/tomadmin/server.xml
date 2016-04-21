@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Server port="{{admin_port}}" shutdown="SHUTDOWN">
+  <Listener className="org.apache.catalina.core.JasperListener" />
+  <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener" />
+  <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener" />
+  <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener" />
+  <Service name="Catalina">
+    <Executor name="tomcatThreadPool" namePrefix="catalina-exec-"
+        maxThreads="{{maxthreads}}" minSpareThreads="{{minSpareThreads}}"/>
+    <Connector executor="tomcatThreadPool"
+        port="{{http_port}}" protocol="org.apache.coyote.http11.Http11NioProtocol"
+        connectionTimeout="{{connectionTimeout}}"
+        redirectPort="{{redirectPort}}" 
+               useBodyEncodingForURI="true" 
+			   URIEncoding="UTF-8" />
+    <Engine name="Catalina" defaultHost="localhost">
+      <Host name="localhost"  appBase="webapps"
+            unpackWARs="true" autoDeploy="true">
+        <Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix="localhost_access_log." suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+      </Host>
+    </Engine>
+  </Service>
+</Server>

@@ -1,0 +1,12 @@
+/opt/*/logs/*.out
+/opt/*/logs/*.log             
+{
+	rotate 10
+    daily
+#    size 100M
+	missingok
+	notifempty
+    delaycompress
+	compress
+    dateext
+}

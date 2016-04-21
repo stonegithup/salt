@@ -1,0 +1,62 @@
+{% if grains['os'] == "Debian" %}
+activemq:
+  pkg:
+    - installed
+    - skip_verify: True
+  service:
+    - running
+    - reload: True
+    - watch:
+      - file: /usr/share/activemq/activemq-options
+
+#/etc/activemq/instances-available/main:
+#  file.symlink:
+#    - target: /etc/activemq/instances-enabled/main
+
+/etc/activemq/instances-enabled/main:
+  file.symlink:
+    - target: /etc/activemq/instances-available/main
+
+/usr/share/activemq/activemq-options:
+  file.managed:
+    - source: salt://uc/activemq/activemq-options
+{% endif %}
+
+{% if grains['os'] == "CentOS" %}
+wget:
+  pkg:
+    - installed
+
+install_activemq:
+  file.managed:
+    - name: /opt/apache-activemq-5.11.1-bin.tar.gz
+    - source:  http://source.y7tech.cn/activemq/apache-activemq-5.11.1-bin.tar.gz
+    - source_hash: http://source.y7tech.cn/activemq/apache-activemq-5.11.1-bin.tar.gz.md5
+    - cwd: /opt/
+    - user: root
+
+extract_activemq:
+  cmd.run:
+    - name: tar -zxvf apache-activemq-5.11.1-bin.tar.gz
+    - cwd: /opt/
+    - user: root
+    - require:
+      - file: install_activemq
+rename_activemq:
+  cmd.run:
+    - name: mv apache-activemq-5.11.1 apache-activemq 
+    - cwd: /opt/
+    - user: root
+    - require:
+      - cmd: extract_activemq
+{% include "java/init.sls" %}
+/opt/apache-activemq/bin/env:
+  file.managed:
+    - source: salt://uc/activemq/env.CentOS
+    - user: root
+    - mode: 755
+start_activemq:
+  cmd.run:
+    - name: /opt/apache-activemq/bin/activemq start
+    - user: root
+{% endif %}

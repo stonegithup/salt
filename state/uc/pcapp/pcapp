@@ -1,0 +1,76 @@
+#!/bin/bash
+
+function help(){
+    echo "Usage: $0 start|stop|restart|status"
+    exit
+}
+
+function start(){
+
+    Re=$(_status)
+    if [ "$Re" != "1" ]
+    then
+        :
+    else
+        nohup /opt/jdk/bin/java -jar /opt/pcapp/pcapp.jar > /opt/pcapp/logs.log &
+    fi
+}
+
+function _status(){
+    Pid=`cat /tmp/pcapp.pid`
+    if echo $Pid | grep -E [[:digit:]] >> /dev/null
+    then
+        if [ -d /proc/$Pid/ ]
+        then
+            echo $Pid;
+        else
+            echo 1;
+        fi
+    else
+        echo 1;
+    fi
+}
+
+function stop(){
+    Re=$(_status)
+    if [ "$Re" != "1" ]
+    then
+        echo $Re
+        kill -kill $Re
+    else
+        echo Proc not exist!
+    fi
+}
+
+function status(){
+    Re=$(_status)
+    if [ "$Re" == "1" ]
+    then
+        echo NO
+    else
+        echo PID:"$Re" OK
+    fi
+}
+check_user() {
+    __required_user=$1
+    if [[ "$(whoami)" != "$__required_user" ]]; then
+        echo "This script is supposed to be run as '$__required_user'."
+        exit 0
+    fi  
+}
+case $1 in
+    "start")
+        check_user appUcpcapp
+        start
+        ;;
+    "stop")
+        stop
+        ;;
+    "status")
+        status
+        ;;
+    *)
+        help
+        ;;
+esac
+
